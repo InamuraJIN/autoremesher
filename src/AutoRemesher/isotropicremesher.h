@@ -45,6 +45,11 @@ public:
         m_sharpEdgeDegrees = degrees;
     }
     
+    void setSmoothIterations(int smoothIterations)
+    {
+        m_smoothIterations = smoothIterations;
+    }
+    
     const std::vector<Vector3> &remeshedVertices()
     {
         return m_remeshedVertices;
@@ -64,6 +69,7 @@ private:
     double m_targetEdgeLength = 0;
     double m_sharpEdgeDegrees = 60;
     int m_remeshIterations = 3;
+    int m_smoothIterations = 0;
     std::vector<Vector3> m_remeshedVertices;
     std::vector<std::vector<size_t>> m_remeshedTriangles;
 };

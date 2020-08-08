@@ -36,7 +36,7 @@ namespace AutoRemesher
 {
     
 const double AutoRemesher::m_defaultTargetEdgeLength = 3.9;
-const double AutoRemesher::m_defaultConstraintRatio = 0.5;
+const double AutoRemesher::m_defaultConstraintRatio = 0.4;
 const size_t AutoRemesher::m_defaultMaxSingularityCount = 500;
 const size_t AutoRemesher::m_defaultMaxVertexCount = 8000;
 const double AutoRemesher::m_defaultSharpEdgeDegrees = 60;
@@ -429,6 +429,10 @@ bool AutoRemesher::remesh()
 #endif
                     continue;
                 }
+#if AUTO_REMESHER_DEV
+                thread.mesh->debugExportRelativeHeightPly("debug-height.ply");
+                thread.mesh->debugExportLimitRelativeHeightPly("debug-limit.ply", thread.limitRelativeHeight);
+#endif
 #if AUTO_REMESHER_DEBUG
                 qDebug() << "Island[" << thread.islandIndex << "]: candidate(" << thread.sharpEdgeDegrees << ") parameterize succeed on singularity count:" << thread.singularityCount;
 #endif

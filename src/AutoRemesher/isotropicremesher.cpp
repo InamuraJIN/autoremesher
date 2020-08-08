@@ -28,6 +28,7 @@
 #include <CGAL/Polygon_mesh_processing/remesh.h>
 #include <CGAL/Polygon_mesh_processing/border.h>
 #include <CGAL/Polygon_mesh_processing/repair.h>
+#include <CGAL/Polygon_mesh_processing/smooth_shape.h>
 #include <boost/function_output_iterator.hpp>
 #include <AutoRemesher/Vector3>
 #include <AutoRemesher/IsotropicRemesher>
@@ -45,12 +46,12 @@ bool IsotropicRemesher::remesh()
 {
     Mesh mesh;
     
-    std::vector<Mesh::Vertex_index> vertices;
-    vertices.reserve(m_vertices.size());
+    std::vector<Mesh::Vertex_index> newVertices;
+    newVertices.reserve(m_vertices.size());
     for (const auto &position: m_vertices)
-        vertices.push_back(mesh.add_vertex(Point(position.x(), position.y(), position.z())));
+        newVertices.push_back(mesh.add_vertex(Point(position.x(), position.y(), position.z())));
     for (const auto &face: m_triangles)
-        mesh.add_face(vertices[face[0]], vertices[face[1]], vertices[face[2]]);
+        mesh.add_face(newVertices[face[0]], newVertices[face[1]], newVertices[face[2]]);
     
     CGAL::Polygon_mesh_processing::remove_degenerate_faces(mesh);
     
@@ -71,6 +72,18 @@ bool IsotropicRemesher::remesh()
         CGAL::Polygon_mesh_processing::parameters::number_of_iterations(m_remeshIterations)
         .protect_constraints(true)
         .edge_is_constrained_map(ecm));
+    
+    if (m_smoothIterations > 0) {
+        std::set<Mesh::Vertex_index> constrainedVertices;
+        for (Mesh::Vertex_index v: vertices(mesh)) {
+            if (is_border(v, mesh))
+                constrainedVertices.insert(v);
+        }
+        const double stepTime = 0.0001;
+        CGAL::Boolean_property_map<std::set<Mesh::Vertex_index> > vcmap(constrainedVertices);
+        CGAL::Polygon_mesh_processing::smooth_shape(mesh, stepTime, CGAL::Polygon_mesh_processing::parameters::number_of_iterations(m_smoothIterations)
+                                                    .vertex_is_constrained_map(vcmap));
+    }
     
     Mesh::Property_map<Mesh::Vertex_index, size_t> meshPropertyMap;
     bool created;

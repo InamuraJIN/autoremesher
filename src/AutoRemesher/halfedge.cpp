@@ -509,7 +509,7 @@ void Mesh::debugExportRelativeHeightPly(const char *filename)
 void Mesh::debugExportLimitRelativeHeightPly(const char *filename, float limitRelativeHeight)
 {
     for (Vertex *vertex = m_firstVertex; nullptr != vertex; vertex = vertex->_next) {
-        vertex->debugColor = vertex->relativeHeight > limitRelativeHeight ? 0 : 127 + (1.0 - limitRelativeHeight * vertex->relativeHeight) * 100;
+        vertex->debugColor = vertex->relativeHeight <= limitRelativeHeight ? 0 : 127 + limitRelativeHeight * vertex->relativeHeight * 100;
     }
     debugExportPly(filename);
 }

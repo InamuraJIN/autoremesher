@@ -68,14 +68,14 @@ Parameterizer::Parameterizer(HalfEdge::Mesh *mesh, const Parameters &parameters)
 
 double Parameterizer::calculateLimitRelativeHeight(double constraintRatio)
 {
-    size_t targetConstraintVertexCount = m_mesh->vertexCount() * constraintRatio;
+    size_t targetNoneConstraintVertexCount = m_mesh->vertexCount() * (1.0 - constraintRatio);
     size_t constaintVertexCount = 0;
-    double limitRelativeHeight = 0.2;
-    if (targetConstraintVertexCount > 0) {
+    double limitRelativeHeight = 0.0;
+    if (targetNoneConstraintVertexCount > 0) {
         for (const auto &it: m_mesh->vertexOrderedByFlatness()) {
             limitRelativeHeight = it->relativeHeight;
             ++constaintVertexCount;
-            if (constaintVertexCount >= targetConstraintVertexCount)
+            if (constaintVertexCount >= targetNoneConstraintVertexCount)
                 break;
         }
     }
@@ -95,7 +95,7 @@ void Parameterizer::prepareConstraints(double limitRelativeHeight)
         HalfEdge::HalfEdge *h2 = h1->nextHalfEdge;
         
         auto addFeatured = [&](HalfEdge::HalfEdge *h) {
-            if (h->startVertex->relativeHeight > limitRelativeHeight)
+            if (h->startVertex->relativeHeight <= limitRelativeHeight)
                 return false;
   
             auto r1 = m_PD1->row(h->startVertex->outputIndex);
@@ -162,6 +162,11 @@ bool Parameterizer::miq(size_t *singularityCount, bool calculateSingularityOnly)
     // Deform the mesh to transform the frame field in a cross field
     igl::frame_field_deformer(
         *m_V, *m_F, FF1, FF2, V_deformed, FF1_deformed, FF2_deformed);
+        
+#if AUTO_REMESHER_DEV
+    igl::writeOBJ("debug-origin.obj", *m_V, *m_F);
+    igl::writeOBJ("debug-deformed.obj", V_deformed, *m_F);
+#endif
 
     // Find the closest crossfield to the deformed frame field
     igl::frame_to_cross_field(V_deformed, *m_F, FF1_deformed, FF2_deformed, X1_deformed);

@@ -19,8 +19,8 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  *  SOFTWARE.
  */
-#ifndef AUTO_REMESHER_PARAMETRIZATION_H
-#define AUTO_REMESHER_PARAMETRIZATION_H
+#ifndef AUTO_REMESHER_PARAMETERIZER_H
+#define AUTO_REMESHER_PARAMETERIZER_H
 #include <AutoRemesher/HalfEdge>
 #include <igl/avg_edge_length.h>
 #include <igl/barycenter.h>
