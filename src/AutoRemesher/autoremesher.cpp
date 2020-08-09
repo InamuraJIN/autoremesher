@@ -299,6 +299,21 @@ bool AutoRemesher::remesh()
                 parameters.gradientSize = thread.island->gradientSize;
 
                 thread.parameterizer = new Parameterizer(thread.mesh, parameters);
+                
+                thread.limitRelativeHeight = thread.parameterizer->calculateLimitRelativeHeight(m_defaultConstraintRatio);
+                
+                Eigen::VectorXi *b = nullptr;
+                Eigen::MatrixXd *bc1 = nullptr;
+                Eigen::MatrixXd *bc2 = nullptr;
+                thread.parameterizer->prepareConstraints(thread.limitRelativeHeight,
+                    &b, &bc1, &bc2);
+                thread.parameterizer->miq(&thread.singularityCount, *b, *bc1, *bc2, true);
+                delete b;
+                delete bc1;
+                delete bc2;
+                
+                if (thread.singularityCount <= m_defaultMaxSingularityCount)
+                    thread.singularityCountCalculated = true;
             }
         }
     private:
@@ -350,8 +365,11 @@ bool AutoRemesher::remesh()
     std::vector<SingularityCalculationThread> singularityCalculationThreads;
     for (size_t i = 0; i < parameterizationThreads.size(); ++i) {
         auto &thread = parameterizationThreads[i];
+        if (thread.singularityCountCalculated)
+            continue;
         auto constraintRatio = m_defaultConstraintRatio;
-        for (; constraintRatio.first < m_defaultConstraintRatio.second; constraintRatio.first += 0.01) {
+        const double step = 0.01;
+        for (constraintRatio.first += step; constraintRatio.first < m_defaultConstraintRatio.second; constraintRatio.first += step) {
             SingularityCalculationThread calculation;
             calculation.parameterizationThread = &thread;
             calculation.constraintRatio = constraintRatio;
