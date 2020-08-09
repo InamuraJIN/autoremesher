@@ -28,7 +28,6 @@
 #include <CGAL/Polygon_mesh_processing/remesh.h>
 #include <CGAL/Polygon_mesh_processing/border.h>
 #include <CGAL/Polygon_mesh_processing/repair.h>
-#include <CGAL/Polygon_mesh_processing/smooth_shape.h>
 #include <boost/function_output_iterator.hpp>
 #include <AutoRemesher/Vector3>
 #include <AutoRemesher/IsotropicRemesher>
@@ -38,6 +37,8 @@ typedef Kernel::Point_3                                         Point;
 typedef CGAL::Surface_mesh<Kernel::Point_3>                     Mesh;
 typedef boost::graph_traits<Mesh>::halfedge_descriptor          halfedge_descriptor;
 typedef boost::graph_traits<Mesh>::edge_descriptor              edge_descriptor;
+typedef boost::graph_traits<Mesh>::vertex_iterator              vertex_iterator;
+typedef boost::graph_traits<Mesh>::vertex_descriptor            vertex_descriptor;
 
 namespace AutoRemesher
 {
@@ -55,13 +56,26 @@ bool IsotropicRemesher::remesh()
     
     CGAL::Polygon_mesh_processing::remove_degenerate_faces(mesh);
     
+    std::map<vertex_descriptor, int> vertexDescriptorToIndexMap;
+    size_t vertexIndex = 0;
+    vertex_iterator vb, ve;
+    for (boost::tie(vb, ve) = vertices(mesh); vb != ve; ++ vb){
+        vertexDescriptorToIndexMap[*vb] = vertexIndex++;
+    }
+    
     auto ecm = mesh.add_property_map<edge_descriptor, bool>("ecm").first;
     CGAL::Polygon_mesh_processing::detect_sharp_edges(mesh, m_sharpEdgeDegrees, ecm);
     
     std::vector<edge_descriptor> border;
     for (edge_descriptor e: edges(mesh)) {
-        if (ecm[e])
+        if (ecm[e]) {
             border.push_back(e);
+        } else if (nullptr != m_constraintVertices) {
+            if (m_constraintVertices->end() != m_constraintVertices->find(vertexDescriptorToIndexMap[source(e, mesh)]) ||
+                    m_constraintVertices->end() != m_constraintVertices->find(vertexDescriptorToIndexMap[target(e, mesh)])) {
+                ecm[e] = true;
+            }
+        }
     }
     CGAL::Polygon_mesh_processing::split_long_edges(border, 
         m_targetEdgeLength, mesh, CGAL::Polygon_mesh_processing::parameters::edge_is_constrained_map(ecm));
@@ -72,18 +86,6 @@ bool IsotropicRemesher::remesh()
         CGAL::Polygon_mesh_processing::parameters::number_of_iterations(m_remeshIterations)
         .protect_constraints(true)
         .edge_is_constrained_map(ecm));
-    
-    if (m_smoothIterations > 0) {
-        std::set<Mesh::Vertex_index> constrainedVertices;
-        for (Mesh::Vertex_index v: vertices(mesh)) {
-            if (is_border(v, mesh))
-                constrainedVertices.insert(v);
-        }
-        const double stepTime = 0.0001;
-        CGAL::Boolean_property_map<std::set<Mesh::Vertex_index> > vcmap(constrainedVertices);
-        CGAL::Polygon_mesh_processing::smooth_shape(mesh, stepTime, CGAL::Polygon_mesh_processing::parameters::number_of_iterations(m_smoothIterations)
-                                                    .vertex_is_constrained_map(vcmap));
-    }
     
     Mesh::Property_map<Mesh::Vertex_index, size_t> meshPropertyMap;
     bool created;

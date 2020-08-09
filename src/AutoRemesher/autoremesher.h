@@ -68,7 +68,7 @@ public:
         double *targetEdgeLength);
     
     static const double m_defaultTargetEdgeLength;
-    static const double m_defaultConstraintRatio;
+    static const std::pair<double, double> m_defaultConstraintRatio;
     static const size_t m_defaultMaxSingularityCount;
     static const size_t m_defaultMaxVertexCount;
     static const double m_defaultSharpEdgeDegrees;

@@ -1,6 +1,8 @@
 QT += core widgets opengl network
 CONFIG += release
-DEFINES += NDEBUG AUTO_REMESHER_DEBUG
+DEFINES += NDEBUG 
+DEFINES += AUTO_REMESHER_DEBUG
+#DEFINES += AUTO_REMESHER_DEV
 DEFINES += QT_MESSAGELOGCONTEXT
 RESOURCES += resources.qrc
 
@@ -10,6 +12,7 @@ OBJECTS_DIR=obj
 MOC_DIR=moc
 
 win32 {
+    #CONFIG += force_debug_info
 	RC_FILE = autoremesher.rc
 }
 
@@ -162,6 +165,9 @@ HEADERS += src/AutoRemesher/quadremesher.h
 
 SOURCES += src/AutoRemesher/isotropicremesher.cpp
 HEADERS += src/AutoRemesher/isotropicremesher.h
+
+SOURCES += src/AutoRemesher/meshcutter.cpp
+HEADERS += src/AutoRemesher/meshcutter.h
 
 SOURCES += src/AutoRemesher/halfedge.cpp
 HEADERS += src/AutoRemesher/halfedge.h

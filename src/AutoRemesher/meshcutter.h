@@ -19,60 +19,52 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  *  SOFTWARE.
  */
-#ifndef AUTO_REMESHER_ISOTROPIC_REMESHER_H
-#define AUTO_REMESHER_ISOTROPIC_REMESHER_H
-#include <unordered_set>
+#ifndef AUTO_REMESHER_MESH_CUTTER_H
+#define AUTO_REMESHER_MESH_CUTTER_H
+#include <AutoRemesher/Vector3>
+#include <vector>
 
 namespace AutoRemesher
 {
     
-class IsotropicRemesher
+class MeshCutter
 {
 public:
-    IsotropicRemesher(const std::vector<Vector3> &vertices,
+    MeshCutter(const std::vector<Vector3> &vertices,
             const std::vector<std::vector<size_t>> &triangles) :
         m_vertices(vertices),
         m_triangles(triangles)
     {
     }
     
-    void setConstraintVertices(const std::unordered_set<size_t> *constraintVertices)
+    const std::vector<Vector3> &getFirstHalfVertices()
     {
-        m_constraintVertices = constraintVertices;
+        return m_firstHalfVertices;
     }
     
-    void setTargetEdgeLength(double edgeLength)
+    const std::vector<Vector3> &getSecondHalfVertices()
     {
-        m_targetEdgeLength = edgeLength;
+        return m_secondHalfVertices;
     }
     
-    void setSharpEdgeDegrees(double degrees)
+    const std::vector<std::vector<size_t>> &getFirstHalfTriangles()
     {
-        m_sharpEdgeDegrees = degrees;
+        return m_firstHalfTriangles;
     }
     
-    const std::vector<Vector3> &remeshedVertices()
+    const std::vector<std::vector<size_t>> &getSecondHalfTriangles()
     {
-        return m_remeshedVertices;
+        return m_secondHalfTriangles;
     }
     
-    const std::vector<std::vector<size_t>> &remeshedTriangles()
-    {
-        return m_remeshedTriangles;
-    }
-    
-    bool remesh();
-    
-    void debugExportObj(const char *filename);
+    void cut();
 private:
     std::vector<Vector3> m_vertices;
     std::vector<std::vector<size_t>> m_triangles;
-    const std::unordered_set<size_t> *m_constraintVertices = nullptr;
-    double m_targetEdgeLength = 0;
-    double m_sharpEdgeDegrees = 60;
-    int m_remeshIterations = 3;
-    std::vector<Vector3> m_remeshedVertices;
-    std::vector<std::vector<size_t>> m_remeshedTriangles;
+    std::vector<Vector3> m_firstHalfVertices;
+    std::vector<std::vector<size_t>> m_firstHalfTriangles;
+    std::vector<Vector3> m_secondHalfVertices;
+    std::vector<std::vector<size_t>> m_secondHalfTriangles;
 };
     
 }

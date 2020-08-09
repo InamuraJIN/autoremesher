@@ -55,18 +55,22 @@ public:
     };
     
     Parameterizer(HalfEdge::Mesh *mesh, const Parameters &parameters);
-    double calculateLimitRelativeHeight(double constraintRatio);
-    void prepareConstraints(double limitRelativeHeight);
-    bool miq(size_t *singularityCount, bool calculateSingularityOnly);
+    std::pair<double, double> Parameterizer::calculateLimitRelativeHeight(const std::pair<double, double> &limitRelativeHeight);
+    void prepareConstraints(const std::pair<double, double> &limitRelativeHeight,
+        Eigen::VectorXi **b,
+        Eigen::MatrixXd **bc1,
+        Eigen::MatrixXd **bc2);
+    bool miq(size_t *singularityCount, 
+        const Eigen::VectorXi &b,
+        const Eigen::MatrixXd &bc1,
+        const Eigen::MatrixXd &bc2,
+        bool calculateSingularityOnly);
 private:
     Eigen::MatrixXd *m_V = nullptr;
     Eigen::MatrixXi *m_F = nullptr;
     Eigen::MatrixXd *m_PD1 = nullptr;
     Eigen::MatrixXd *m_PD2 = nullptr;
     HalfEdge::Mesh *m_mesh = nullptr;
-    Eigen::VectorXi *m_b = nullptr;
-    Eigen::MatrixXd *m_bc1 = nullptr;
-    Eigen::MatrixXd *m_bc2 = nullptr;
     Parameters m_parameters;
 };
     

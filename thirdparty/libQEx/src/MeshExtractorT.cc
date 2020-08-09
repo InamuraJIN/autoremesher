@@ -2562,7 +2562,7 @@ generate_faces_and_store_quadmesh(PolyMeshT& _quad_mesh,
                       std::cout << "Some halfedge next- or prev-handles are invalid." << std::endl
                               << "  heh validity signature:     " << toBinStr(validity_signature, face_vhs.size() * 2) << std::endl
                               << "  opp heh validity signature: " << toBinStr(opp_validity_signature, face_vhs.size() * 2) << std::endl;
-                      abort();
+                      //abort();
                   }
                   bool do_abort = false;
                   for (typename std::vector<LocalEdgeInfo*>::const_iterator it = outgoing_he_info.begin(); it != outgoing_he_info.end(); ++it) {
@@ -2581,7 +2581,7 @@ generate_faces_and_store_quadmesh(PolyMeshT& _quad_mesh,
                       std::cout << "Before I abort, let me hook you up with the face stats." << std::endl;
                       std::cout << faceStats.str() << std::endl;
                       std::cout << "That's it. I'm aborting now. Bye." << std::endl;
-                      abort();
+                      //abort();
                   }
                   for (typename std::vector<typename PolyMeshT::VertexHandle>::const_iterator it = face_vhs.begin(); it != face_vhs.end(); ++it) {
                       assert(_quad_mesh.valence(*it) > 0);
