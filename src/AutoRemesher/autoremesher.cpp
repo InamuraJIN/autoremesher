@@ -300,20 +300,30 @@ bool AutoRemesher::remesh()
 
                 thread.parameterizer = new Parameterizer(thread.mesh, parameters);
                 
-                thread.limitRelativeHeight = thread.parameterizer->calculateLimitRelativeHeight(m_defaultConstraintRatio);
-                
-                Eigen::VectorXi *b = nullptr;
-                Eigen::MatrixXd *bc1 = nullptr;
-                Eigen::MatrixXd *bc2 = nullptr;
-                thread.parameterizer->prepareConstraints(thread.limitRelativeHeight,
-                    &b, &bc1, &bc2);
-                thread.parameterizer->miq(&thread.singularityCount, *b, *bc1, *bc2, true);
-                delete b;
-                delete bc1;
-                delete bc2;
-                
-                if (thread.singularityCount <= m_defaultMaxSingularityCount)
-                    thread.singularityCountCalculated = true;
+                auto constraintRatio = m_defaultConstraintRatio;
+                const double step = 0.01;
+                for (; constraintRatio.first < m_defaultConstraintRatio.second; constraintRatio.first += step) {
+                    thread.limitRelativeHeight = thread.parameterizer->calculateLimitRelativeHeight(constraintRatio);
+#if AUTO_REMESHER_DEBUG
+                    qDebug() << "Island[" << thread.islandIndex << "]: test limitRelativeHeight:" << thread.limitRelativeHeight << " ratio:" << constraintRatio;
+#endif
+                    Eigen::VectorXi *b = nullptr;
+                    Eigen::MatrixXd *bc1 = nullptr;
+                    Eigen::MatrixXd *bc2 = nullptr;
+                    thread.parameterizer->prepareConstraints(thread.limitRelativeHeight,
+                        &b, &bc1, &bc2);
+                    thread.parameterizer->miq(&thread.singularityCount, *b, *bc1, *bc2, true);
+                    delete b;
+                    delete bc1;
+                    delete bc2;
+#if AUTO_REMESHER_DEBUG
+                    qDebug() << "Island[" << thread.islandIndex << "]: test singularityCount:" << thread.singularityCount << " on ratio:" << constraintRatio.first;
+#endif
+                    if (thread.singularityCount <= m_defaultMaxSingularityCount) {
+                        thread.singularityCountCalculated = true;
+                        break;
+                    }
+                }
             }
         }
     private:
@@ -321,81 +331,11 @@ bool AutoRemesher::remesh()
     };
     tbb::parallel_for(tbb::blocked_range<size_t>(0, parameterizationThreads.size()),
         UniformRemesher(&parameterizationThreads));
-        
     
-    struct SingularityCalculationThread
-    {
-        ParameterizationThread *parameterizationThread;
-        std::pair<double, double> constraintRatio;
-        std::pair<double, double> limitRelativeHeight;
-        size_t singularityCount = 0;
-    };
-    class SingularityCalculator
-    {
-    public:
-        SingularityCalculator(std::vector<SingularityCalculationThread> *singularityCalculationThreads) :
-            m_singularityCalculationThreads(singularityCalculationThreads)
-        {
-        }
-        void operator()(const tbb::blocked_range<size_t> &range) const
-        {
-            for (size_t i = range.begin(); i != range.end(); ++i) {
-                auto &thread = (*m_singularityCalculationThreads)[i];
-                thread.limitRelativeHeight = thread.parameterizationThread->parameterizer->calculateLimitRelativeHeight(thread.constraintRatio);
-#if AUTO_REMESHER_DEBUG
-                qDebug() << "Island[" << thread.parameterizationThread->islandIndex << "]: test limitRelativeHeight:" << thread.limitRelativeHeight << " ratio:" << thread.constraintRatio.first;
-#endif
-                Eigen::VectorXi *b = nullptr;
-                Eigen::MatrixXd *bc1 = nullptr;
-                Eigen::MatrixXd *bc2 = nullptr;
-                thread.parameterizationThread->parameterizer->prepareConstraints(thread.limitRelativeHeight,
-                    &b, &bc1, &bc2);
-                thread.parameterizationThread->parameterizer->miq(&thread.singularityCount, *b, *bc1, *bc2, true);
-                delete b;
-                delete bc1;
-                delete bc2;
-#if AUTO_REMESHER_DEBUG
-                qDebug() << "Island[" << thread.parameterizationThread->islandIndex << "]: test singularityCount:" << thread.singularityCount << " on ratio:" << thread.constraintRatio.first;
-#endif
-            }
-        }
-    private:
-        std::vector<SingularityCalculationThread> *m_singularityCalculationThreads = nullptr;
-    };
-    std::vector<SingularityCalculationThread> singularityCalculationThreads;
-    for (size_t i = 0; i < parameterizationThreads.size(); ++i) {
-        auto &thread = parameterizationThreads[i];
-        if (thread.singularityCountCalculated)
-            continue;
-        auto constraintRatio = m_defaultConstraintRatio;
-        const double step = 0.01;
-        for (constraintRatio.first += step; constraintRatio.first < m_defaultConstraintRatio.second; constraintRatio.first += step) {
-            SingularityCalculationThread calculation;
-            calculation.parameterizationThread = &thread;
-            calculation.constraintRatio = constraintRatio;
-            singularityCalculationThreads.push_back(calculation);
-        }
-    }
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, singularityCalculationThreads.size()),
-        SingularityCalculator(&singularityCalculationThreads));
-    for (const auto &it: singularityCalculationThreads) {
-        auto &thread = *it.parameterizationThread;
-        if (thread.singularityCountCalculated)
-            continue;
-        if (it.singularityCount > m_defaultMaxSingularityCount)
-            continue;
-        thread.limitRelativeHeight = it.limitRelativeHeight;
-        thread.singularityCount = it.singularityCount;
-        thread.singularityCountCalculated = true;
-#if AUTO_REMESHER_DEBUG
-        qDebug() << "Island[" << thread.islandIndex << "]: conformed singularityCount:" << thread.singularityCount << " limitRelativeHeight:" << thread.limitRelativeHeight << " ratio:" << it.constraintRatio.first;
-#endif
-    }
-        
     std::vector<ParameterizationThread *> validParameterizationThreads;
     for (size_t i = 0; i < parameterizationThreads.size(); ++i) {
         auto &thread = parameterizationThreads[i];
-        if (thread.singularityCountCalculated && thread.singularityCount <= m_defaultMaxSingularityCount) {
+        if (thread.singularityCountCalculated) {
 #if AUTO_REMESHER_DEBUG
             qDebug() << "Island[" << thread.islandIndex << "/" << islandContexes.size() << "]: has valid singularity count:" << thread.singularityCount;
 #endif
@@ -488,9 +428,30 @@ bool AutoRemesher::remesh()
             });
         }
     }
-    
+
 #if AUTO_REMESHER_DEBUG
-     qDebug() << "Remesh done";
+    qDebug() << "Remesh done";
+#endif
+#if AUTO_REMESHER_DEV
+    {
+        FILE *fp = fopen("autoremesher-debug.obj", "wb");
+        for (size_t i = 0; i < m_remeshedVertices.size(); ++i) {
+            const auto &v = m_remeshedVertices[i];
+            fprintf(fp, "v %f %f %f\n", v.x(), v.y(), v.z());
+        }
+        for (size_t i = 0; i < m_remeshedQuads.size(); ++i) {
+            const auto &f = m_remeshedQuads[i];
+            fprintf(fp, "f %zu %zu %zu %zu\n", 
+                1 + f[0],
+                1 + f[1],
+                1 + f[2],
+                1 + f[3]);
+        }
+        fclose(fp);
+    }
+#endif
+#if AUTO_REMESHER_DEBUG
+    qDebug() << "Remesh debug result saved";
 #endif
 
     return true;
