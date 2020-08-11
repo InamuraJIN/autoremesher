@@ -56,13 +56,6 @@ void QuadExtractorPostprocT<MeshT>::generate_collapse_graph(Graph &out_collapseG
          */
         for (typename CollapseGroups::iterator cg_it = collapseGroups.begin(), last_cg_it; cg_it != collapseGroups.end(); last_cg_it = cg_it++) {
             if (cg_it == collapseGroups.begin()) continue;
-
-#ifndef NDEBUG
-            if (!(cg_it->second.idx() >= 0 && (size_t)cg_it->second.idx() < out_collapseGraph.size())) {
-                std::cerr << "Assertion cg_it->second.idx() > 0 && (size_t)cg_it->second.idx() < collapseGraph.size() is going to fail." << std::endl
-                        << "cg_it->second.idx(): " << cg_it->second.idx() << ", collapseGraph.size(): " << out_collapseGraph.size() << std::endl;
-            }
-#endif
             assert(cg_it->second.idx() >= 0 && (size_t)cg_it->second.idx() < out_collapseGraph.size());
             if (cg_it->first == last_cg_it->first) {
                 out_collapseGraph[last_cg_it->second.idx()].push_back(cg_it->second);
@@ -71,51 +64,6 @@ void QuadExtractorPostprocT<MeshT>::generate_collapse_graph(Graph &out_collapseG
         }
     }
 }
-
-#if 0
-template<class MeshT>
-void QuadExtractorPostprocT<MeshT>::viz_components() {
-    /*
-     * Construct collapse graph.
-     */
-    Graph collapseGraph;
-    generate_collapse_graph(collapseGraph);
-
-    /*
-     * Traverse components and color vertices.
-     */
-    mesh_.request_vertex_colors();
-
-    // Initialize vertex color to black;
-    for (typename MeshT::VertexIter v_it = mesh_.vertices_begin(), v_end = mesh_.vertices_end(); v_it != v_end; ++v_it)
-        mesh_.set_color(*v_it, Vec4f(0, 0, 0, 1));
-
-    // Color Components
-    ACG::ColorGenerator colorGenerator;
-    int vertexIdx = 0;
-    for (typename Graph::const_iterator root_node_it = collapseGraph.begin(); root_node_it != collapseGraph.end(); ++root_node_it, ++vertexIdx) {
-        if (root_node_it->empty()) continue;
-
-        std::stack<VH> bfs;
-        bfs.push(mesh_.vertex_handle(vertexIdx));
-        ACG::Vec4f component_color = colorGenerator.generateNextColor();
-
-        while (!bfs.empty()) {
-            VH cur = bfs.top(); bfs.pop();
-
-            mesh_.set_color(cur, component_color);
-
-            for (typename AdjacencyList::const_iterator it = collapseGraph[cur.idx()].begin(), it_end = collapseGraph[cur.idx()].end();
-                    it != it_end; ++it) {
-                bfs.push(*it);
-            }
-
-            // Mark as visited by clearing adjacency list.
-            collapseGraph[cur.idx()].clear();
-        }
-    }
-}
-#endif
 
 template<class MeshT>
 size_t QuadExtractorPostprocT<MeshT>::create_consolidated_vertices_and_vertex_map(Graph &collapseGraph, std::vector<int> &out_vertex_map) {
@@ -236,18 +184,6 @@ bool QuadExtractorPostprocT<MeshT>::simplify_face(const std::vector<std::pair<VH
         if (seq_end == currentFace.end()) {
             assert(seq_begin == currentFace.begin());
             assert(static_cast<size_t>(sequenceLength) == currentFace.size());
-#ifndef XNDEBUG
-            if (sequenceLength != 4 && sequenceLength > 2) {
-                std::cerr << "WARNING: Subsequence length was " << sequenceLength << " out of " << currentFace.size() << std::endl;
-                std::cerr << "Entire sequence: ";
-                for (typename VEC_PVH2I::iterator v1_it = currentFace.begin(), v1_end = currentFace.end(); v1_it != v1_end; v1_it++) {
-                    std::cerr << " " << v1_it->first.idx();
-                }
-                std::cerr << std::endl;
-                std::cerr << "Subsequence: [" << std::distance(currentFace.begin(), seq_begin)
-                    << ", " << std::distance(currentFace.begin(), seq_end) << ")" << std::endl;
-            }
-#endif
 
             if (sequenceLength > 2) {
                 *faceOutIt++ = currentFace;
@@ -276,35 +212,6 @@ typename QuadExtractorPostprocT<MeshT>::FH QuadExtractorPostprocT<MeshT>::create
     for (typename std::vector<std::pair<VH, Vec2i> >::const_iterator it = newFaceVertices.begin(); it != newFaceVertices.end(); ++it)
         face.push_back(it->first);
 
-#ifndef NDEBUG
-    /*
-     * Extensive checking.
-     */
-    for (typename std::vector<VH>::const_iterator v1_it = face.begin(), v0_it = v1_it++, v_end = face.end();
-            v0_it != v_end; ++v0_it, (++v1_it == v_end ? v1_it = face.begin() : v1_it)) {
-        assert(!mesh_.status(*v0_it).deleted());
-        assert(!mesh_.status(*v1_it).deleted());
-
-        for (typename std::vector<VH>::const_iterator v2_it = v0_it + 1; v2_it != v_end; ++v2_it) {
-            assert(*v0_it != *v2_it);
-            assert(v0_it->idx() != v2_it->idx());
-        }
-
-        assert(v0_it->idx() != v1_it->idx());
-
-        if (mesh_.is_isolated(*v0_it)) continue;
-
-        for (typename MeshT::VOHIter voh_it = mesh_.voh_begin(*v0_it), voh_end = mesh_.voh_end(*v0_it);
-                voh_it != voh_end; ++voh_it) {
-            if (mesh_.status(*voh_it).deleted()) continue;
-
-            if (mesh_.to_vertex_handle(*voh_it) == *v1_it) {
-                assert(mesh_.is_boundary(*voh_it));
-            }
-        }
-    }
-#endif
-
     const typename MeshT::FaceHandle fh = mesh_.add_face(face);
     //assert(fh.is_valid());
     if (!fh.is_valid()) return fh;
@@ -312,13 +219,6 @@ typename QuadExtractorPostprocT<MeshT>::FH QuadExtractorPostprocT<MeshT>::create
     /*
      * TODO: Transfer Local UV property.
      */
-
-#ifndef NDEBUG
-    if (newFaceVertices.size() != 4)
-        mesh_.set_color(fh, typename MeshT::Color(1.0, 0, 0, 1.0));
-    else
-        mesh_.set_color(fh, typename MeshT::Color(1.0, 1.0, 1.0, 1.0));
-#endif
 
     return fh;
 }
@@ -383,19 +283,6 @@ size_t QuadExtractorPostprocT<MeshT>::delete_obsolete_faces_and_create_new_ones(
         if (mesh_.is_boundary(heh0) && mesh_.is_boundary(heh1))
             mesh_.delete_edge(*e_it, false);
     }
-
-#ifndef NDEBUG
-    for (typename std::vector<std::vector<PVHV2I> >::iterator f_it = out_newFaces.begin(), f_end = out_newFaces.end();
-            f_it != f_end; ++f_it) {
-
-        for (typename std::vector<PVHV2I>::iterator v_it = f_it->begin(), v_end = f_it->end(); v_it != v_end; ++v_it) {
-            for (typename std::vector<PVHV2I>::iterator v2_it = v_it + 1; v2_it != v_end; ++v2_it) {
-                assert(v_it->first != v2_it->first);
-                assert(v_it->first.idx() != v2_it->first.idx());
-            }
-        }
-    }
-#endif
 
     return deletedFaces;
 }
@@ -494,23 +381,9 @@ size_t QuadExtractorPostprocT<MeshT>::remove_isolated_vertices(std::vector<std::
      */
     for (typename MeshT::FaceIter f_it = mesh_.faces_begin(), f_end = mesh_.faces_end(); f_it != f_end; ++f_it) {
         if (mesh_.status(*f_it).deleted()) continue;
-#ifndef NDEBUG
-        int innerCnt = 0;
-#endif
         for (typename MeshT::FVIter fv_it = mesh_.fv_begin(*f_it), fv_end = mesh_.fv_end(*f_it); fv_it != fv_end; ++fv_it) {
             assert(fv_it->idx() >= 0 && (size_t)fv_it->idx() < used.size());
             used[fv_it->idx()] = true;
-#ifndef NDEBUG
-            if (++innerCnt == 10) {
-                std::cerr << "Face " << f_it->idx() << " with >= 10 vertices? That seems rather unlikely." << std::endl;
-            }
-
-            if (innerCnt >= 10 && innerCnt <= 20) {
-                std::cerr << "fv_it->idx(): " << fv_it->idx() << std::endl;
-            } else if (innerCnt > 20) {
-                abort();
-            }
-#endif
         }
     }
 
@@ -580,9 +453,6 @@ size_t QuadExtractorPostprocT<MeshT>::create_faces(std::vector<std::vector<std::
         std::pair<typename EDGE_INCIDENTS::iterator, bool> insertRes =
                 edge_incidents.insert(std::pair<EDGE, INCIDENT_FACES>(EDGE(v0, v1), INCIDENT_FACES(f0, f1)));
         if (insertRes.second == false) {
-#ifndef NDEBUG
-            std::cerr << "Double edge case." << std::endl;
-#endif
             if (!insertRes.first->second.first.is_valid())
                 insertRes.first->second = INCIDENT_FACES(f0, f1);
             else if (!insertRes.first->second.second.is_valid())
@@ -615,16 +485,8 @@ size_t QuadExtractorPostprocT<MeshT>::create_faces(std::vector<std::vector<std::
          * Check whether any of the edges is incident to two faces already.
          * v1_it wraps around for the last iteraton.
          */
-#ifndef NDEBUG
-        size_t edge_count = 0;
-#endif
         for (typename FACE::const_iterator v1_it = f_it->begin(), v0_it = v1_it++, v_end = f_it->end();
                 v0_it != v_end; ++v0_it, ((++v1_it == v_end) ? (v1_it = f_it->begin()) : v1_it)) {
-
-#ifndef NDEBUG
-            ++edge_count;
-#endif
-
             VH v0 = v0_it->first, v1 = v1_it->first;
 
             assert(!mesh_.status(v0).deleted());
@@ -650,10 +512,6 @@ size_t QuadExtractorPostprocT<MeshT>::create_faces(std::vector<std::vector<std::
                     if (mesh_.to_vertex_handle(*voh_it) == v1 &&
                             !mesh_.is_boundary(*voh_it)) {
                         skip = true;
-    #ifndef NDEBUG
-                        // Highlight perpetrators.
-                        mesh_.set_color(mesh_.face_handle(*voh_it), typename MeshT::Color(1.0, 0.0, 0.0, 1.0));
-    #endif
     #ifdef NDEBUG
                         break;
     #endif
@@ -674,12 +532,6 @@ size_t QuadExtractorPostprocT<MeshT>::create_faces(std::vector<std::vector<std::
                     // ... if it has two incident faces, we can't add the new face.
                     edge_incident_it->second.first.is_valid() && edge_incident_it->second.second.is_valid()) {
 
-#ifndef NDEBUG
-                // Highlight perpetrators.
-                mesh_.set_color(edge_incident_it->second.first, typename MeshT::Color(1.0, 0.0, 0.0, 1.0));
-                mesh_.set_color(edge_incident_it->second.second, typename MeshT::Color(1.0, 0.0, 0.0, 1.0));
-#endif
-
                 skip = true;
                 std::cerr << "create_faces: Skipping. Reason: Non-boundary edge." << std::endl;
                 break;
@@ -699,11 +551,6 @@ size_t QuadExtractorPostprocT<MeshT>::create_faces(std::vector<std::vector<std::
                 }
             }
         }
-#ifndef NDEBUG
-        if (!skip && edge_count != f_it->size()) {
-            std::cerr << "Assertion is going to fail. edge_count = " << edge_count << ", f_it->size() = " << f_it->size() << std::endl;
-        }
-#endif
         assert(skip || edge_count == f_it->size());
         /*
          * Check end.
@@ -724,9 +571,6 @@ size_t QuadExtractorPostprocT<MeshT>::create_faces(std::vector<std::vector<std::
                 continue;
             }
             assert(newFh.is_valid());
-#ifndef NDEBUG
-            mesh_.set_color(newFh, typename MeshT::Color(0, .4, 0, 1.0));
-#endif
 
             /*
              * Register new face on all of its edges.
@@ -782,11 +626,6 @@ void QuadExtractorPostprocT<MeshT>::ngons_to_quads() {
     /*
      * Color existing faces in gray.
      */
-#ifndef NDEBUG
-    mesh_.request_face_colors();
-    for (typename MeshT::FaceIter f_it = mesh_.faces_begin(), f_end = mesh_.faces_end(); f_it != f_end; ++f_it)
-        mesh_.set_color(*f_it, typename MeshT::Color(.4, .4, .4, 1.0));
-#endif
 
     mesh_.request_vertex_colors();
     for (typename MeshT::VertexIter v_it = mesh_.vertices_begin(), v_end = mesh_.vertices_end(); v_it != v_end; ++v_it)
@@ -803,10 +642,7 @@ void QuadExtractorPostprocT<MeshT>::ngons_to_quads() {
      * Generate (non-injective) mapping old vertex -> new vertex
      */
     std::vector<int> vertex_map;
-#ifndef NDEBUG
-    const size_t createdVertices =
-#endif
-            create_consolidated_vertices_and_vertex_map(collapseGraph, vertex_map);
+    create_consolidated_vertices_and_vertex_map(collapseGraph, vertex_map);
 
     /*
      * Delete and rebuild all faces that do not have an identity mapping.
@@ -817,14 +653,7 @@ void QuadExtractorPostprocT<MeshT>::ngons_to_quads() {
 
     std::vector<std::vector<PVHV2I> > newFaces;
 
-#ifndef NDEBUG
-    const size_t deletedFaces_initial =
-#endif
-            delete_obsolete_faces_and_create_new_ones(vertex_map, newFaces);
-#ifndef NDEBUG
-    const size_t updatedFaces_initial =
-#endif
-            newFaces.size();
+    delete_obsolete_faces_and_create_new_ones(vertex_map, newFaces);
     size_t deletedFaces_cleanup = 0;
     size_t deletedVertices_cleanup = 0;
 
@@ -833,48 +662,15 @@ void QuadExtractorPostprocT<MeshT>::ngons_to_quads() {
         deletedVertices_cleanup += remove_isolated_vertices(newFaces);
     }
 
-#ifndef NDEBUG
-    size_t skippedFaces =
-#endif
-            create_faces(newFaces);
+    create_faces(newFaces);
 
     /*
      * Delete all vertices that were mapped somewhere else.
      */
-#ifndef NDEBUG
-    const size_t deletedVertices =
-#endif
-            delete_old_vertices(vertex_map);
-
-#ifndef NDEBUG
-    std::cout
-            << "perform_initial_collapses:" << std::endl
-            << "  Initially deleted " << deletedVertices << " vertices, created " << createdVertices << " vertices." << std::endl
-            << "  Initially deleted " << deletedFaces_initial << " faces, updated " << updatedFaces_initial << " faces." << std::endl
-            << "  During cleanup deleted " << deletedFaces_cleanup << " faces, deleted " << deletedVertices_cleanup << " vertices." << std::endl
-            << "  During face materialization skipped " << skippedFaces << " faces due to non-manifoldness." << std::endl;
-#endif
-
+    delete_old_vertices(vertex_map);
+    
     mesh_.garbage_collection();
     mesh_.update_normals();
-
-#ifndef NDEBUG
-    std::cout << "Garbage collection done." << std::endl;
-#endif
-}
-
-template<class MeshT>
-void QuadExtractorPostprocT<MeshT>::output_localuvs_of_selected_faces() {
-    for (typename MeshT::FaceIter f_it = mesh_.faces_begin(), f_end = mesh_.faces_end(); f_it != f_end; ++f_it) {
-        if (mesh_.status(*f_it).selected()) {
-            std::cout << "Face " << f_it->idx() << " [<vertex idx>(<local uv>)]: ";
-            for (typename MeshT::FHIter fh_begin = mesh_.fh_begin(*f_it), fh_it = fh_begin, fh_end = mesh_.fh_end(*f_it); fh_it != fh_end; ++fh_it) {
-                if (fh_it != fh_begin) std::cout << ", ";
-                std::cout << mesh_.to_vertex_handle(*fh_it) << "(" << localUvsProp[*fh_it] << ")";
-            }
-            std::cout << std::endl;
-        }
-    }
 }
 
 } // namespace QEx

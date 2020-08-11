@@ -36,6 +36,14 @@ bool QuadRemesher::remesh()
 {
     qex_TriMesh triMesh = {0};
     qex_QuadMesh quadMesh = {0};
+    qex_Valence *vertexValences = nullptr;
+    
+    if (nullptr != m_vertexValences) {
+        vertexValences = (qex_Valence *)malloc(sizeof(qex_Valence) * m_vertexValences->size());
+        for (size_t i = 0; i < m_vertexValences->size(); ++i) {
+            vertexValences[i] = (qex_Valence)(*m_vertexValences)[i];
+        }
+    }
     
     triMesh.vertex_count = m_mesh->vertexCount();
     triMesh.tri_count = m_mesh->faceCount();
@@ -84,7 +92,7 @@ bool QuadRemesher::remesh()
         }};
     }
 
-    qex_extractQuadMesh(&triMesh, nullptr, &quadMesh);
+    qex_extractQuadMesh(&triMesh, vertexValences, &quadMesh);
     
     m_remeshedVertices.resize(quadMesh.vertex_count);
     for (unsigned int i = 0; i < quadMesh.vertex_count; ++i) {
@@ -117,6 +125,8 @@ bool QuadRemesher::remesh()
 
     free(quadMesh.vertices);
     free(quadMesh.quads);
+    
+    free(vertexValences);
     
     return true;
 }

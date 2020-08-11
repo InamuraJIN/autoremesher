@@ -264,6 +264,7 @@ bool AutoRemesher::remesh()
         size_t singularityCount = 0;
         bool singularityCountCalculated = false;
         QuadRemesher *remesher = nullptr;
+        bool miqSucceed = false;
     };
 
     std::vector<ParameterizationThread> parameterizationThreads(islandContexes.size());
@@ -370,11 +371,11 @@ bool AutoRemesher::remesh()
                 thread.mesh->debugExportRelativeHeightPly("debug-height.ply");
                 thread.mesh->debugExportLimitRelativeHeightPly("debug-limit.ply", thread.limitRelativeHeight);
 #endif
-                bool miqSucceed = thread.parameterizer->miq(&thread.singularityCount, *b, *bc1, *bc2, false);
+                thread.miqSucceed = thread.parameterizer->miq(&thread.singularityCount, *b, *bc1, *bc2, false);
                 delete b;
                 delete bc1;
                 delete bc2;
-                if (!miqSucceed) {
+                if (!thread.miqSucceed) {
 #if AUTO_REMESHER_DEBUG
                     qDebug() << "Island[" << thread.islandIndex << "]: parameterize failed on singularity count:" << thread.singularityCount;
 #endif
@@ -393,10 +394,12 @@ bool AutoRemesher::remesh()
         
     for (size_t i = 0; i < validParameterizationThreads.size(); ++i) {
         auto &thread = *validParameterizationThreads[i];
+        if (!thread.miqSucceed)
+            continue;
 #if AUTO_REMESHER_DEBUG
         qDebug() << "Island[" << thread.islandIndex << "]: remeshing...";
 #endif
-        thread.remesher = new QuadRemesher(thread.mesh);
+        thread.remesher = new QuadRemesher(thread.mesh, &thread.parameterizer->getVertexValences());
         if (!thread.remesher->remesh()) {
             delete thread.remesher;
             thread.remesher = nullptr;

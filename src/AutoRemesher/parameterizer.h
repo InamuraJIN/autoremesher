@@ -65,6 +65,11 @@ public:
         const Eigen::MatrixXd &bc1,
         const Eigen::MatrixXd &bc2,
         bool calculateSingularityOnly);
+        
+    const std::vector<size_t> &getVertexValences()
+    {
+        return m_vertexValences;
+    }
 private:
     Eigen::MatrixXd *m_V = nullptr;
     Eigen::MatrixXi *m_F = nullptr;
@@ -72,6 +77,7 @@ private:
     Eigen::MatrixXd *m_PD2 = nullptr;
     HalfEdge::Mesh *m_mesh = nullptr;
     Parameters m_parameters;
+    std::vector<size_t> m_vertexValences;
 };
     
 }

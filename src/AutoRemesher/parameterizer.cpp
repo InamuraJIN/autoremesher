@@ -20,6 +20,7 @@
  *  SOFTWARE.
  */
 #include <AutoRemesher/Parameterizer>
+#include <AutoRemesher/Radians>
 #include <iostream>
 #include <unordered_set>
 #if AUTO_REMESHER_DEBUG
@@ -225,6 +226,12 @@ bool Parameterizer::miq(size_t *singularityCount,
         }
         if (calculateSingularityOnly)
             return true;
+        
+        m_vertexValences.clear();
+        m_vertexValences.reserve(singularityIndex.rows());
+        for (int i = 0; i < singularityIndex.rows(); ++i) {
+            m_vertexValences.push_back(4 + singularityIndex(i));
+        }
 
         Eigen::Matrix<int, Eigen::Dynamic, 3> Handle_Seams;
         igl::cut_mesh_from_singularities(V_deformed, *m_F, Handle_MMatch, Handle_Seams);
