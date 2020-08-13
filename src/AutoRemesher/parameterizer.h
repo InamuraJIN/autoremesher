@@ -52,6 +52,7 @@ public:
     struct Parameters
     {
         double gradientSize;
+        bool constrainOnFlatArea;
     };
     
     Parameterizer(HalfEdge::Mesh *mesh, const Parameters &parameters);

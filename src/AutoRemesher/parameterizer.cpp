@@ -99,10 +99,16 @@ void Parameterizer::prepareConstraints(const std::pair<double, double> &limitRel
         HalfEdge::HalfEdge *h2 = h1->nextHalfEdge;
         
         auto addFeatured = [&](HalfEdge::HalfEdge *h) {
-            if (h->startVertex->relativeHeight < limitRelativeHeight.first || 
-                    h->startVertex->relativeHeight > limitRelativeHeight.second)
-                return false;
-  
+            if (m_parameters.constrainOnFlatArea) {
+                if (h->startVertex->relativeHeight >= limitRelativeHeight.first && 
+                        h->startVertex->relativeHeight <= limitRelativeHeight.second)
+                    return false;
+            } else {
+                if (h->startVertex->relativeHeight < limitRelativeHeight.first || 
+                        h->startVertex->relativeHeight > limitRelativeHeight.second)
+                    return false;
+            }
+            
             auto r1 = m_PD1->row(h->startVertex->outputIndex);
             auto r2 = m_PD2->row(h->startVertex->outputIndex);
             

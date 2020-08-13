@@ -278,8 +278,9 @@ bool AutoRemesher::remesh()
     class UniformRemesher
     {
     public:
-        UniformRemesher(std::vector<ParameterizationThread> *parameterizationThreads) :
-            m_parameterizationThreads(parameterizationThreads)
+        UniformRemesher(std::vector<ParameterizationThread> *parameterizationThreads, ConstrainedArea constrainedArea) :
+            m_parameterizationThreads(parameterizationThreads),
+            m_constrainedArea(constrainedArea)
         {   
         }
         void operator()(const tbb::blocked_range<size_t> &range) const
@@ -298,12 +299,14 @@ bool AutoRemesher::remesh()
                 
                 Parameterizer::Parameters parameters;
                 parameters.gradientSize = thread.island->gradientSize;
+                parameters.constrainOnFlatArea = ConstrainedArea::ConstrainedAreaFlat == m_constrainedArea;
 
                 thread.parameterizer = new Parameterizer(thread.mesh, parameters);
                 
                 auto constraintRatio = m_defaultConstraintRatio;
-                const double step = 0.01;
-                for (; constraintRatio.first < m_defaultConstraintRatio.second; constraintRatio.first += step) {
+                const double positiveStep = 0.01;
+                const double step = parameters.constrainOnFlatArea ? -positiveStep : positiveStep;
+                for (; constraintRatio.first < m_defaultConstraintRatio.second && constraintRatio.first >= positiveStep; constraintRatio.first += step) {
                     thread.limitRelativeHeight = thread.parameterizer->calculateLimitRelativeHeight(constraintRatio);
 #if AUTO_REMESHER_DEBUG
                     qDebug() << "Island[" << thread.islandIndex << "]: test limitRelativeHeight:" << thread.limitRelativeHeight << " ratio:" << constraintRatio;
@@ -329,9 +332,10 @@ bool AutoRemesher::remesh()
         }
     private:
         std::vector<ParameterizationThread> *m_parameterizationThreads = nullptr;
+        ConstrainedArea m_constrainedArea;
     };
     tbb::parallel_for(tbb::blocked_range<size_t>(0, parameterizationThreads.size()),
-        UniformRemesher(&parameterizationThreads));
+        UniformRemesher(&parameterizationThreads, m_constrainedArea));
     
     std::vector<ParameterizationThread *> validParameterizationThreads;
     for (size_t i = 0; i < parameterizationThreads.size(); ++i) {
