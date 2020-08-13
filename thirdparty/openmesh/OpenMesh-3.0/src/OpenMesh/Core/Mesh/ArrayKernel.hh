@@ -363,10 +363,11 @@ public:
 
   void set_next_halfedge_handle(HalfedgeHandle _heh, HalfedgeHandle _nheh)
   {
-    assert(is_valid_handle(_nheh));
+    //assert(is_valid_handle(_nheh));
 //     assert(to_vertex_handle(_heh) == from_vertex_handle(_nheh));
     halfedge(_heh).next_halfedge_handle_ = _nheh;
-    set_prev_halfedge_handle(_nheh, _heh);
+    if (is_valid_handle(_nheh)) // fixed by AutoRemesher
+      set_prev_halfedge_handle(_nheh, _heh);
   }
 
 

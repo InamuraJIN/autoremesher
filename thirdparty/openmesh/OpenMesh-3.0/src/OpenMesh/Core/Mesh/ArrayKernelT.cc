@@ -219,23 +219,41 @@ void ArrayKernel::garbage_collection(std_API_Container_VHandlePointer& vh_to_upd
   for (KernelEdgeIter e_it(edges_begin()); e_it != edges_end(); ++e_it)
   {//in the first pass update the (half)edges vertices
     hh = halfedge_handle(handle(*e_it), 0);
-    set_vertex_handle(hh, vh_map[to_vertex_handle(hh).idx()]);
+    if (-1 != to_vertex_handle(hh).idx() && to_vertex_handle(hh).idx() < vh_map.size()) // fixed by AutoRemesher
+      set_vertex_handle(hh, vh_map[to_vertex_handle(hh).idx()]);
+    else
+      set_vertex_handle(hh, VertexHandle());
     hh = halfedge_handle(handle(*e_it), 1);
-    set_vertex_handle(hh, vh_map[to_vertex_handle(hh).idx()]);
+    if (-1 != to_vertex_handle(hh).idx() && to_vertex_handle(hh).idx() < vh_map.size())
+      set_vertex_handle(hh, vh_map[to_vertex_handle(hh).idx()]);
+    else
+      set_vertex_handle(hh, VertexHandle());
   }
   for (KernelEdgeIter e_it(edges_begin()); e_it != edges_end(); ++e_it)
   {//in the second pass update the connectivity of the (half)edges
     hh = halfedge_handle(handle(*e_it), 0);
-    set_next_halfedge_handle(hh, hh_map[next_halfedge_handle(hh).idx()]);
+    if (-1 != next_halfedge_handle(hh).idx() && next_halfedge_handle(hh).idx() < hh_map.size()) // fixed by AutoRemesher
+      set_next_halfedge_handle(hh, hh_map[next_halfedge_handle(hh).idx()]);
+    else
+      set_next_halfedge_handle(hh, HalfedgeHandle());
     if (!is_boundary(hh))
     {
-      set_face_handle(hh, fh_map[face_handle(hh).idx()]);
+      if (-1 != face_handle(hh).idx() && face_handle(hh).idx() < fh_map.size())
+        set_face_handle(hh, fh_map[face_handle(hh).idx()]);
+      else
+        set_face_handle(hh, FaceHandle());
     }
     hh = halfedge_handle(handle(*e_it), 1);
-    set_next_halfedge_handle(hh, hh_map[next_halfedge_handle(hh).idx()]);
+    if (-1 != next_halfedge_handle(hh).idx() && next_halfedge_handle(hh).idx() < hh_map.size()) // fixed by AutoRemesher
+      set_next_halfedge_handle(hh, hh_map[next_halfedge_handle(hh).idx()]);
+    else
+        set_next_halfedge_handle(hh, HalfedgeHandle());
     if (!is_boundary(hh))
     {
-      set_face_handle(hh, fh_map[face_handle(hh).idx()]);
+        if (-1 != face_handle(hh).idx() && face_handle(hh).idx() < fh_map.size())
+            set_face_handle(hh, fh_map[face_handle(hh).idx()]);
+        else
+            set_face_handle(hh, FaceHandle());
     }
   }
 
